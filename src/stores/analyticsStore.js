@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { analyticsService } from '@services/analyticsService';
 
 export const useAnalyticsStore = create((set, get) => ({
   events: [],
@@ -29,7 +28,8 @@ export const useAnalyticsStore = create((set, get) => ({
     if (events.length === 0) return;
 
     try {
-      await analyticsService.sendEvents(events);
+      // Mock analytics service - in real app would send to analytics service
+      console.log('Analytics events:', events);
       set({ events: [] });
     } catch (error) {
       console.error('Failed to send analytics events:', error);

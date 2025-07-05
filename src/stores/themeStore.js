@@ -5,7 +5,7 @@ export const useThemeStore = create(
   persist(
     (set, get) => ({
       theme: 'light',
-      
+
       setTheme: (theme) => {
         set({ theme });
         document.documentElement.className = theme;

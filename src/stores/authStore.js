@@ -1,6 +1,48 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authService } from '@services/authService';
+
+// Mock auth service for development
+const mockAuthService = {
+  async login(email, password) {
+    // Mock successful login
+    return {
+      id: 'user-123',
+      name: 'John Doe',
+      email: email,
+      isAdmin: email === 'admin@loopchat.com'
+    };
+  },
+
+  async register(email, password, name) {
+    // Mock successful registration
+    return {
+      id: 'user-' + Date.now(),
+      name: name,
+      email: email,
+      isAdmin: false
+    };
+  },
+
+  async logout() {
+    // Mock logout
+    return { success: true };
+  },
+
+  async getCurrentUser() {
+    // Mock current user check
+    const userData = localStorage.getItem('auth-storage');
+    if (userData) {
+      const parsed = JSON.parse(userData);
+      return parsed.state?.user || null;
+    }
+    return null;
+  },
+
+  async updateProfile(updates) {
+    // Mock profile update
+    return { ...updates };
+  }
+};
 
 export const useAuthStore = create(
   persist(
@@ -12,21 +54,36 @@ export const useAuthStore = create(
 
       initialize: async () => {
         try {
-          const user = await authService.getCurrentUser();
-          set({ user, isAuthenticated: !!user, isLoading: false });
+          const user = await mockAuthService.getCurrentUser();
+          set({ 
+            user, 
+            isAuthenticated: !!user, 
+            isLoading: false 
+          });
         } catch (error) {
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          set({ 
+            user: null, 
+            isAuthenticated: false, 
+            isLoading: false 
+          });
         }
       },
 
       login: async (email, password) => {
         try {
           set({ isLoading: true, error: null });
-          const user = await authService.login(email, password);
-          set({ user, isAuthenticated: true, isLoading: false });
+          const user = await mockAuthService.login(email, password);
+          set({ 
+            user, 
+            isAuthenticated: true, 
+            isLoading: false 
+          });
           return user;
         } catch (error) {
-          set({ error: error.message, isLoading: false });
+          set({ 
+            error: error.message, 
+            isLoading: false 
+          });
           throw error;
         }
       },
@@ -34,29 +91,44 @@ export const useAuthStore = create(
       register: async (email, password, name) => {
         try {
           set({ isLoading: true, error: null });
-          const user = await authService.register(email, password, name);
-          set({ user, isAuthenticated: true, isLoading: false });
+          const user = await mockAuthService.register(email, password, name);
+          set({ 
+            user, 
+            isAuthenticated: true, 
+            isLoading: false 
+          });
           return user;
         } catch (error) {
-          set({ error: error.message, isLoading: false });
+          set({ 
+            error: error.message, 
+            isLoading: false 
+          });
           throw error;
         }
       },
 
       logout: async () => {
         try {
-          await authService.logout();
-          set({ user: null, isAuthenticated: false, error: null });
+          await mockAuthService.logout();
+          set({ 
+            user: null, 
+            isAuthenticated: false, 
+            error: null 
+          });
         } catch (error) {
           console.error('Logout error:', error);
-          set({ user: null, isAuthenticated: false, error: null });
+          set({ 
+            user: null, 
+            isAuthenticated: false, 
+            error: null 
+          });
         }
       },
 
       updateProfile: async (updates) => {
         try {
-          const updatedUser = await authService.updateProfile(updates);
-          set({ user: updatedUser });
+          const updatedUser = await mockAuthService.updateProfile(updates);
+          set({ user: { ...get().user, ...updatedUser } });
           return updatedUser;
         } catch (error) {
           set({ error: error.message });
@@ -68,7 +140,10 @@ export const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated })
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
+      })
     }
   )
 );

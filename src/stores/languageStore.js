@@ -50,7 +50,8 @@ const translations = {
       tutorials: 'Tutorials',
       language: 'Language',
       theme: 'Theme',
-      notifications: 'Notifications'
+      notifications: 'Notifications',
+      settings: 'Settings'
     }
   }
 };
@@ -71,11 +72,12 @@ export const useLanguageStore = create(
       setLanguage: async (languageCode) => {
         try {
           set({ isLoading: true });
-          
           // In a real app, you might fetch translations from an API
           await new Promise(resolve => setTimeout(resolve, 100));
-          
-          set({ currentLanguage: languageCode, isLoading: false });
+          set({ 
+            currentLanguage: languageCode, 
+            isLoading: false 
+          });
           localStorage.setItem('language', languageCode);
         } catch (error) {
           set({ isLoading: false });
@@ -104,7 +106,9 @@ export const useLanguageStore = create(
     }),
     {
       name: 'language-storage',
-      partialize: (state) => ({ currentLanguage: state.currentLanguage })
+      partialize: (state) => ({
+        currentLanguage: state.currentLanguage
+      })
     }
   )
 );

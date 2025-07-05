@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useThemeStore } from '@stores/themeStore';
 import { useLanguageStore } from '@stores/languageStore';
+import { useSubscriptionStore } from '@stores/subscriptionStore';
 import QuestLoginPage from '@components/auth/QuestLoginPage';
 import QuestOnboardingPage from '@components/auth/QuestOnboardingPage';
 import ChatLayout from '@components/layout/ChatLayout';
@@ -18,10 +19,12 @@ import './App.css';
 function App() {
   const { theme } = useThemeStore();
   const { initializeLanguage } = useLanguageStore();
+  const { loadSubscription } = useSubscriptionStore();
 
   React.useEffect(() => {
     initializeLanguage();
-  }, [initializeLanguage]);
+    loadSubscription();
+  }, [initializeLanguage, loadSubscription]);
 
   return (
     <div className={theme}>

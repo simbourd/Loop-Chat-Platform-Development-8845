@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@questlabs/react-sdk": "^2.1.9",
+    "@stripe/stripe-js": "^2.4.0",
     "@supabase/supabase-js": "^2.39.0",
     "react": "^18.3.1",
     "react-router-dom": "^7.1.0",
@@ -20,7 +21,7 @@
     "framer-motion": "^11.0.8",
     "echarts": "^5.5.0",
     "echarts-for-react": "^3.0.2",
-    "date-fns": "4.1.0",
+    "date-fns": "^4.1.0",
     "zustand": "^4.4.7",
     "recharts": "^2.8.0",
     "react-markdown": "^9.0.1",

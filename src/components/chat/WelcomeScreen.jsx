@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAgentStore } from '@stores/agentStore';
 import { useChatStore } from '@stores/chatStore';
 import { useLanguageStore } from '@stores/languageStore';
@@ -7,9 +8,10 @@ import { useAnalyticsStore } from '@stores/analyticsStore';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '@/common/SafeIcon';
 
-const { FiMessageCircle, FiPlus, FiZap, FiUsers, FiTrendingUp } = FiIcons;
+const { FiMessageCircle, FiPlus, FiZap, FiUsers, FiTrendingUp, FiCreditCard } = FiIcons;
 
 function WelcomeScreen() {
+  const navigate = useNavigate();
   const { agents } = useAgentStore();
   const { createChat } = useChatStore();
   const { t } = useLanguageStore();
@@ -23,6 +25,11 @@ function WelcomeScreen() {
     } catch (error) {
       console.error('Failed to create quick start chat:', error);
     }
+  };
+
+  const handleViewPricing = () => {
+    navigate('/pricing');
+    track('pricing_clicked_from_welcome');
   };
 
   const activeAgents = agents.filter(agent => agent.active).slice(0, 4);
@@ -67,13 +74,24 @@ function WelcomeScreen() {
           >
             LC
           </motion.div>
-          
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Welcome to Loop Chat
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
             Your collaborative AI chat platform with flow-style integrations
           </p>
+          
+          {/* CTA Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            onClick={handleViewPricing}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl mb-12"
+          >
+            <SafeIcon icon={FiCreditCard} className="h-5 w-5" />
+            Upgrade to Pro
+          </motion.button>
         </div>
 
         {/* Features Grid */}
@@ -113,7 +131,6 @@ function WelcomeScreen() {
             <p className="text-gray-600 dark:text-gray-300 mb-8">
               Start chatting with one of our AI agents
             </p>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {activeAgents.map((agent) => (
                 <motion.button

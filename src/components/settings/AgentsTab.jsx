@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAgentStore } from '@stores/agentStore';
+import { useSubscriptionStore } from '@stores/subscriptionStore';
 import { useLanguageStore } from '@stores/languageStore';
 import { useAnalyticsStore } from '@stores/analyticsStore';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '@/common/SafeIcon';
 
-const { FiPlus, FiEdit3, FiTrash2, FiToggleLeft, FiToggleRight, FiExternalLink } = FiIcons;
+const { FiPlus, FiEdit3, FiTrash2, FiToggleLeft, FiToggleRight, FiExternalLink, FiLock, FiCreditCard } = FiIcons;
 
 function AgentsTab() {
+  const navigate = useNavigate();
   const { agents, createAgent, updateAgent, deleteAgent } = useAgentStore();
+  const { hasActiveSubscription, isPremiumPlan, loadSubscription } = useSubscriptionStore();
   const { t } = useLanguageStore();
   const { track } = useAnalyticsStore();
+  
   const [showForm, setShowForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState(null);
   const [formData, setFormData] = useState({
@@ -22,9 +27,21 @@ function AgentsTab() {
     active: true
   });
 
+  useEffect(() => {
+    loadSubscription();
+  }, [loadSubscription]);
+
+  const canUseWebhooks = hasActiveSubscription() && isPremiumPlan();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Check if trying to add webhook without subscription
+    if (formData.webhookUrl && !canUseWebhooks) {
+      track('webhook_blocked_no_subscription');
+      return;
+    }
+
     try {
       if (editingAgent) {
         await updateAgent(editingAgent.id, formData);
@@ -80,6 +97,11 @@ function AgentsTab() {
     }
   };
 
+  const handleUpgrade = () => {
+    navigate('/pricing');
+    track('upgrade_clicked_from_agents');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -95,6 +117,34 @@ function AgentsTab() {
         </button>
       </div>
 
+      {/* Subscription Warning */}
+      {!canUseWebhooks && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
+        >
+          <div className="flex items-center gap-3">
+            <SafeIcon icon={FiLock} className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            <div className="flex-1">
+              <h4 className="font-medium text-yellow-800 dark:text-yellow-200">
+                Webhook Integration Requires Premium
+              </h4>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                To add webhook URLs and connect with n8n/Make.com, you need to upgrade to a premium plan.
+              </p>
+            </div>
+            <button
+              onClick={handleUpgrade}
+              className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              <SafeIcon icon={FiCreditCard} className="h-4 w-4" />
+              Upgrade Now
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Agent Form */}
       {showForm && (
         <motion.div
@@ -106,7 +156,6 @@ function AgentsTab() {
           <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             {editingAgent ? 'Edit Agent' : 'Add New Agent'}
           </h4>
-          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -121,7 +170,6 @@ function AgentsTab() {
                   required
                 />
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Platform
@@ -136,7 +184,7 @@ function AgentsTab() {
                 </select>
               </div>
             </div>
-
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Description
@@ -148,20 +196,52 @@ function AgentsTab() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               />
             </div>
-
+            
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Webhook URL
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Webhook URL
+                </label>
+                {!canUseWebhooks && (
+                  <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                    <SafeIcon icon={FiLock} className="h-4 w-4" />
+                    <span className="text-xs">Premium Required</span>
+                  </div>
+                )}
+              </div>
               <input
                 type="url"
                 value={formData.webhookUrl}
-                onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                required
+                onChange={(e) => {
+                  if (!canUseWebhooks && e.target.value) {
+                    // Show upgrade modal or redirect
+                    track('webhook_input_blocked');
+                    return;
+                  }
+                  setFormData({ ...formData, webhookUrl: e.target.value });
+                }}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                  !canUseWebhooks 
+                    ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 cursor-not-allowed' 
+                    : 'border-gray-300 dark:border-gray-600'
+                }`}
+                placeholder={canUseWebhooks ? "https://your-webhook-url.com" : "Upgrade to premium to add webhooks"}
+                disabled={!canUseWebhooks}
               />
+              {!canUseWebhooks && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Webhook integration is available with premium plans only.{' '}
+                  <button
+                    type="button"
+                    onClick={handleUpgrade}
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Upgrade now
+                  </button>
+                </p>
+              )}
             </div>
-
+            
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -174,11 +254,12 @@ function AgentsTab() {
                 Active
               </label>
             </div>
-
+            
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                disabled={!canUseWebhooks && formData.webhookUrl}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {editingAgent ? 'Update' : 'Create'}
               </button>
@@ -227,13 +308,12 @@ function AgentsTab() {
                   </p>
                 </div>
               </div>
-              
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleToggleActive(agent)}
                   className={`p-2 rounded-lg transition-colors ${
-                    agent.active
-                      ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                    agent.active 
+                      ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20' 
                       : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
@@ -254,10 +334,18 @@ function AgentsTab() {
               </div>
             </div>
             
-            <div className="mt-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <SafeIcon icon={FiExternalLink} className="h-4 w-4" />
-              <span className="truncate">{agent.webhookUrl}</span>
-            </div>
+            {agent.webhookUrl && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <SafeIcon icon={FiExternalLink} className="h-4 w-4" />
+                <span className="truncate">{agent.webhookUrl}</span>
+                {!canUseWebhooks && (
+                  <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                    <SafeIcon icon={FiLock} className="h-3 w-3" />
+                    <span className="text-xs">Premium</span>
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         ))}
       </div>

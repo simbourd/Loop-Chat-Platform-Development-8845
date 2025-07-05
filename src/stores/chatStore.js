@@ -1,6 +1,57 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { chatService } from '@services/chatService';
+
+// Mock chat service for development
+const mockChatService = {
+  async getChats() {
+    return [
+      {
+        id: 'general-chat',
+        name: 'General Chat',
+        agentId: 'chef-agent',
+        createdAt: new Date().toISOString()
+      }
+    ];
+  },
+
+  async createChat(name, agentId) {
+    return {
+      id: `chat-${Date.now()}`,
+      name,
+      agentId,
+      createdAt: new Date().toISOString()
+    };
+  },
+
+  async getMessages(chatId) {
+    return [
+      {
+        id: 'welcome-msg',
+        content: 'Hello! How can I help you today?',
+        sender: 'agent',
+        timestamp: new Date().toISOString()
+      }
+    ];
+  },
+
+  async sendMessage(chatId, content, attachments = []) {
+    return {
+      id: `msg-${Date.now()}`,
+      content,
+      sender: 'user',
+      timestamp: new Date().toISOString(),
+      attachments
+    };
+  },
+
+  async updateChat(chatId, updates) {
+    return { id: chatId, ...updates };
+  },
+
+  async deleteChat(chatId) {
+    return { success: true };
+  }
+};
 
 export const useChatStore = create(
   persist(
@@ -14,7 +65,7 @@ export const useChatStore = create(
       loadChats: async () => {
         try {
           set({ isLoading: true });
-          const chats = await chatService.getChats();
+          const chats = await mockChatService.getChats();
           set({ chats, isLoading: false });
         } catch (error) {
           set({ error: error.message, isLoading: false });
@@ -23,7 +74,7 @@ export const useChatStore = create(
 
       createChat: async (name, agentId) => {
         try {
-          const newChat = await chatService.createChat(name, agentId);
+          const newChat = await mockChatService.createChat(name, agentId);
           set(state => ({
             chats: [newChat, ...state.chats],
             activeChat: newChat.id,
@@ -41,7 +92,7 @@ export const useChatStore = create(
           set({ activeChat: chatId });
           const state = get();
           if (!state.messages[chatId]) {
-            const messages = await chatService.getMessages(chatId);
+            const messages = await mockChatService.getMessages(chatId);
             set(state => ({
               messages: { ...state.messages, [chatId]: messages }
             }));
@@ -69,8 +120,8 @@ export const useChatStore = create(
             }
           }));
 
-          const message = await chatService.sendMessage(chatId, content, attachments);
-          
+          const message = await mockChatService.sendMessage(chatId, content, attachments);
+
           // Replace temp message with real one
           set(state => ({
             messages: {
@@ -106,10 +157,10 @@ export const useChatStore = create(
 
       updateChat: async (chatId, updates) => {
         try {
-          const updatedChat = await chatService.updateChat(chatId, updates);
+          const updatedChat = await mockChatService.updateChat(chatId, updates);
           set(state => ({
             chats: state.chats.map(chat => 
-              chat.id === chatId ? updatedChat : chat
+              chat.id === chatId ? { ...chat, ...updatedChat } : chat
             )
           }));
           return updatedChat;
@@ -121,7 +172,7 @@ export const useChatStore = create(
 
       deleteChat: async (chatId) => {
         try {
-          await chatService.deleteChat(chatId);
+          await mockChatService.deleteChat(chatId);
           set(state => ({
             chats: state.chats.filter(chat => chat.id !== chatId),
             activeChat: state.activeChat === chatId ? null : state.activeChat,
@@ -138,7 +189,7 @@ export const useChatStore = create(
           const chat = get().chats.find(c => c.id === chatId);
           if (!chat) throw new Error('Chat not found');
           
-          const newChat = await chatService.createChat(`${chat.name} (Copy)`, chat.agentId);
+          const newChat = await mockChatService.createChat(`${chat.name} (Copy)`, chat.agentId);
           set(state => ({
             chats: [newChat, ...state.chats],
             messages: { ...state.messages, [newChat.id]: [] }
@@ -154,10 +205,10 @@ export const useChatStore = create(
     }),
     {
       name: 'chat-storage',
-      partialize: (state) => ({ 
-        chats: state.chats, 
+      partialize: (state) => ({
+        chats: state.chats,
         activeChat: state.activeChat,
-        messages: state.messages 
+        messages: state.messages
       })
     }
   )
